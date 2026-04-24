@@ -37,9 +37,12 @@ import { AppRole } from 'src/auth/app-role.enum';
 import { InternalNotesService } from 'src/common/services/internal-notes.service';
 import { CreateInternalNoteDto } from 'src/common/dto/create-internal-note.dto';
 import { InternalNoteResponseDto } from 'src/common/dto/internal-note-response.dto';
+import { RateLimitGuard, RateLimit } from '../common/guards/rate-limit.guard';
+import { UseGuards } from '@nestjs/common';
 
 @ApiTags('Verification')
 @ApiSecurity('x-api-key')
+@UseGuards(RateLimitGuard)
 @Controller('verification')
 export class VerificationController {
   constructor(
@@ -119,6 +122,11 @@ export class VerificationController {
 
   @Post('start')
   @Version('1')
+  @RateLimit({
+    endpoint: 'verification_start',
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 10,
+  })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Start verification flow (OTP/email/phone)',
@@ -164,6 +172,11 @@ export class VerificationController {
 
   @Post('resend')
   @Version('1')
+  @RateLimit({
+    endpoint: 'verification_resend',
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 3,
+  })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Resend verification code',
@@ -193,6 +206,11 @@ export class VerificationController {
 
   @Post('complete')
   @Version('1')
+  @RateLimit({
+    endpoint: 'verification_complete',
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 5,
+  })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Complete verification with OTP',
@@ -221,6 +239,11 @@ export class VerificationController {
 
   @Post()
   @Version(API_VERSIONS.V1)
+  @RateLimit({
+    endpoint: 'verification_submit',
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 20,
+  })
   @ApiOperation({
     summary: 'Submit identity verification request (v1)',
     description:

@@ -1,4 +1,11 @@
-import { IsString, IsInt, Min, IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  Min,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum PurgeStrategyDto {
@@ -9,7 +16,8 @@ export enum PurgeStrategyDto {
 
 export class CreateRetentionPolicyDto {
   @ApiProperty({
-    description: 'Entity type this policy applies to (e.g. AuditLog, VerificationSession, Session, Claim)',
+    description:
+      'Entity type this policy applies to (e.g. AuditLog, VerificationSession, Session, Claim)',
     example: 'AuditLog',
   })
   @IsString()

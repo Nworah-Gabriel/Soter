@@ -37,9 +37,14 @@ export class RetentionPolicyController {
   @Get()
   @ApiOperation({
     summary: 'List all retention policies',
-    description: 'Returns all configured retention policies, ordered by entity.',
+    description:
+      'Returns all configured retention policies, ordered by entity.',
   })
-  @ApiQuery({ name: 'entity', required: false, description: 'Filter by entity name' })
+  @ApiQuery({
+    name: 'entity',
+    required: false,
+    description: 'Filter by entity name',
+  })
   findAll() {
     return this.service.findAll();
   }

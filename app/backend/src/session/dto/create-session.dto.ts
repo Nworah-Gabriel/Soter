@@ -1,3 +1,4 @@
+// src/session/dto/create-session.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
@@ -9,7 +10,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SessionType } from '@prisma/client';
+
+// Define SessionType locally if not available from prisma
+export enum SessionType {
+  VERIFICATION = 'VERIFICATION',
+  CLAIM = 'CLAIM',
+  AID = 'AID',
+  CUSTOM = 'CUSTOM',
+}
 
 export class SessionStepDefinitionDto {
   @ApiProperty({ description: 'Name of the step' })

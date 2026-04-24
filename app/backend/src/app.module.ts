@@ -38,6 +38,8 @@ import { SessionModule } from './session/session.module';
 import { CommonServicesModule } from './common/services/common-services.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { RetentionPolicyModule } from './retention-policy/retention-policy.module';
+import { RedisModule } from './redis/redis.module';
+import { RateLimitModule } from './common/rate-limit/rate-limit.module';
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { RetentionPolicyModule } from './retention-policy/retention-policy.modul
 
     LoggerModule,
     PrismaModule,
+    RedisModule,
+    RateLimitModule,
     HealthModule,
     AidModule,
     VerificationModule,

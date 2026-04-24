@@ -1,99 +1,142 @@
+// test/verification.rate-limit.e2e-spec.ts (simplified working version)
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { Redis } from 'ioredis';
+import { REDIS_CLIENT } from '../src/redis/redis.module';
+import { RateLimitTestModule } from './rate-limit-test.module';
 
-describe('Verification rate limiting (e2e)', () => {
+describe('Verification Rate Limiting E2E', () => {
   let app: INestApplication;
+  let redis: Redis;
 
-  beforeEach(async () => {
-    // Use small limits for tests
-    process.env.API_RATE_LIMIT = '2';
-    process.env.THROTTLE_TTL = '1000';
-
+  beforeAll(async () => {
+    // Use the test module that bypasses API key validation
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [RateLimitTestModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
+
+    redis = moduleFixture.get(REDIS_CLIENT);
   });
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(async () => {
+    // Clear all rate limit keys before each test
+    const keys = await redis.keys('rate_limit:*');
+    if (keys.length) {
+      await redis.del(...keys);
     }
   });
 
-  it('should enforce rate limit on verification POST (unauthenticated)', async () => {
-    const agent = request(app.getHttpServer());
+  describe('Start Verification Rate Limiting', () => {
+    it('should allow up to 10 start requests per hour', async () => {
+      const endpoint = '/verification/start';
 
-    // First two requests should succeed (within limit)
-    await agent
-      .post('/api/v1/verification')
-      .send({})
-      .expect(res => {
-        expect(res.status).toBeGreaterThanOrEqual(200);
-        expect(res.status).toBeLessThan(300);
-        expect(
-          res.header['ratelimit-limit'] || res.header['RateLimit-Limit'],
-        ).toBeDefined();
-      });
+      // First 10 requests should succeed
+      for (let i = 0; i < 10; i++) {
+        const response = await request(app.getHttpServer())
+          .post(endpoint)
+          .send({ channel: 'email', identifier: `test${i}@example.com` });
 
-    await agent
-      .post('/api/v1/verification')
-      .send({})
-      .expect(res => {
-        expect(res.status).toBeGreaterThanOrEqual(200);
-        expect(res.status).toBeLessThan(300);
-      });
+        expect(response.status).not.toBe(429);
+        expect(response.status).toBe(200);
+      }
 
-    // Third request should be rate limited
-    await agent
-      .post('/api/v1/verification')
-      .send({})
-      .expect(429)
-      .expect(res => {
-        // Headers should be present
-        expect(
-          res.header['ratelimit-limit'] || res.header['RateLimit-Limit'],
-        ).toBeDefined();
-        expect(
-          res.header['ratelimit-remaining'] ||
-            res.header['RateLimit-Remaining'],
-        ).toBeDefined();
-        expect(
-          res.header['ratelimit-reset'] || res.header['RateLimit-Reset'],
-        ).toBeDefined();
-      });
+      // 11th request should be rate limited
+      const response = await request(app.getHttpServer())
+        .post(endpoint)
+        .send({ channel: 'email', identifier: 'test11@example.com' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.message).toContain('Rate limit exceeded');
+      expect(response.body.retryAfter).toBeDefined();
+    });
+
+    it('should include rate limit headers', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/verification/start')
+        .send({ channel: 'email', identifier: 'headers@example.com' });
+
+      // Headers might be set by the rate limit guard
+      expect(response.headers['x-ratelimit-limit']).toBeDefined();
+      expect(response.headers['x-ratelimit-remaining']).toBeDefined();
+      expect(response.headers['x-ratelimit-reset']).toBeDefined();
+    });
   });
 
-  it('should not rate limit authenticated requests (Authorization header present)', async () => {
-    const agent = request(app.getHttpServer());
+  describe('Resend Verification Rate Limiting', () => {
+    let sessionId: string;
 
-    // Send multiple requests with Authorization header - should not be throttled here
-    await agent
-      .post('/api/v1/verification')
-      .set('Authorization', 'Bearer faketoken')
-      .send({})
-      .expect(res => {
-        expect(res.status).toBeGreaterThanOrEqual(200);
-      });
+    beforeEach(async () => {
+      // Create a session first
+      const startResponse = await request(app.getHttpServer())
+        .post('/verification/start')
+        .send({
+          channel: 'email',
+          identifier: `resend-${Date.now()}@example.com`,
+        });
 
-    await agent
-      .post('/api/v1/verification')
-      .set('Authorization', 'Bearer faketoken')
-      .send({})
-      .expect(res => {
-        expect(res.status).toBeGreaterThanOrEqual(200);
-      });
+      sessionId = startResponse.body.sessionId;
+    });
 
-    await agent
-      .post('/api/v1/verification')
-      .set('Authorization', 'Bearer faketoken')
-      .send({})
-      .expect(res => {
-        expect(res.status).toBeGreaterThanOrEqual(200);
-      });
+    it('should allow up to 3 resend requests per hour', async () => {
+      // First 3 resends should succeed
+      for (let i = 0; i < 3; i++) {
+        const response = await request(app.getHttpServer())
+          .post('/verification/resend')
+          .send({ sessionId });
+
+        expect(response.status).not.toBe(429);
+        expect(response.status).toBe(200);
+      }
+
+      // 4th resend should be rate limited
+      const response = await request(app.getHttpServer())
+        .post('/verification/resend')
+        .send({ sessionId });
+
+      expect(response.status).toBe(429);
+    });
+  });
+
+  describe('Complete Verification Rate Limiting', () => {
+    let sessionId: string;
+
+    beforeEach(async () => {
+      const startResponse = await request(app.getHttpServer())
+        .post('/verification/start')
+        .send({
+          channel: 'email',
+          identifier: `complete-${Date.now()}@example.com`,
+        });
+
+      sessionId = startResponse.body.sessionId;
+    });
+
+    it('should allow up to 5 complete attempts per 15 minutes', async () => {
+      // First 5 attempts may return 400 (invalid code) but not rate limit
+      for (let i = 0; i < 5; i++) {
+        const response = await request(app.getHttpServer())
+          .post('/verification/complete')
+          .send({ sessionId, code: '000000' });
+
+        // Should not be rate limited (429)
+        expect(response.status).not.toBe(429);
+      }
+
+      // 6th attempt should be rate limited
+      const response = await request(app.getHttpServer())
+        .post('/verification/complete')
+        .send({ sessionId, code: '000000' });
+
+      expect(response.status).toBe(429);
+    });
   });
 });

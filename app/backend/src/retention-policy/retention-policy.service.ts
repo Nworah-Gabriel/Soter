@@ -108,7 +108,12 @@ export class RetentionPolicyService {
   // ---------------------------------------------------------------------------
 
   async seedDefaults(): Promise<void> {
-    const defaults: { entity: string; retentionDays: number; strategy: PurgeStrategy; description: string }[] = [
+    const defaults: {
+      entity: string;
+      retentionDays: number;
+      strategy: PurgeStrategy;
+      description: string;
+    }[] = [
       {
         entity: 'AuditLog',
         retentionDays: 365,
@@ -146,8 +151,7 @@ export class RetentionPolicyService {
         entity: 'VerificationRequest',
         retentionDays: 180,
         strategy: 'hard_delete',
-        description:
-          'Verification requests are hard-deleted after 180 days',
+        description: 'Verification requests are hard-deleted after 180 days',
       },
     ];
 
@@ -176,7 +180,9 @@ export class RetentionPolicyService {
     });
 
     if (policies.length === 0) {
-      this.logger.warn('No enabled retention policies found – nothing to purge');
+      this.logger.warn(
+        'No enabled retention policies found – nothing to purge',
+      );
       return [];
     }
 
@@ -205,14 +211,12 @@ export class RetentionPolicyService {
   /**
    * Execute purge for a specific entity/policy.
    */
-  async purgeEntity(
-    policy: {
-      id: string;
-      entity: string;
-      retentionDays: number;
-      strategy: string;
-    },
-  ): Promise<PurgeResult> {
+  async purgeEntity(policy: {
+    id: string;
+    entity: string;
+    retentionDays: number;
+    strategy: string;
+  }): Promise<PurgeResult> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - policy.retentionDays);
 
@@ -265,10 +269,7 @@ export class RetentionPolicyService {
   // Strategy implementations
   // ---------------------------------------------------------------------------
 
-  private async softDelete(
-    entity: string,
-    cutoffDate: Date,
-  ): Promise<number> {
+  private async softDelete(entity: string, cutoffDate: Date): Promise<number> {
     const where = {
       createdAt: { lt: cutoffDate },
       deletedAt: null,
@@ -323,10 +324,7 @@ export class RetentionPolicyService {
     }
   }
 
-  private async hardDelete(
-    entity: string,
-    cutoffDate: Date,
-  ): Promise<number> {
+  private async hardDelete(entity: string, cutoffDate: Date): Promise<number> {
     const where = {
       createdAt: { lt: cutoffDate },
     };
@@ -376,10 +374,7 @@ export class RetentionPolicyService {
     }
   }
 
-  private async anonymize(
-    entity: string,
-    cutoffDate: Date,
-  ): Promise<number> {
+  private async anonymize(entity: string, cutoffDate: Date): Promise<number> {
     const where = {
       createdAt: { lt: cutoffDate },
       deletedAt: null,

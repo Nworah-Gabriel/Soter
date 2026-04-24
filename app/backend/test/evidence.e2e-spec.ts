@@ -57,7 +57,7 @@ describe('Evidence Queue (e2e)', () => {
     });
     expect(item?.filePath).toBeDefined();
 
-    const savedContent = await fs.readFile(item!.filePath!);
+    const savedContent = await fs.readFile(item!.filePath);
     expect(savedContent.toString()).not.toContain('test evidence content');
   });
 
