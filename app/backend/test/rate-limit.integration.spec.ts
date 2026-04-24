@@ -1,12 +1,15 @@
+// test/rate-limit.integration.spec.ts (fixed)
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../src/app.module';
+import { RateLimitService } from '../src/common/rate-limit/rate-limit.service';
 
 describe('Rate Limiting Integration', () => {
   let app: INestApplication;
+  let moduleFixture: TestingModule;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
@@ -19,9 +22,16 @@ describe('Rate Limiting Integration', () => {
   });
 
   describe('Rate Limit Service', () => {
-    it('should be defined', async () => {
-      const rateLimitService = await app.resolve('RateLimitService');
+    it('should be defined', () => {
+      const rateLimitService = moduleFixture.get(RateLimitService);
       expect(rateLimitService).toBeDefined();
+    });
+  });
+
+  describe('Rate Limit Guard', () => {
+    it('should be defined', () => {
+      const { RateLimitGuard } = require('../src/common/guards/rate-limit.guard');
+      expect(RateLimitGuard).toBeDefined();
     });
   });
 });
