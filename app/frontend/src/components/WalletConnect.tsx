@@ -5,6 +5,7 @@ import { isConnected, setAllowed, getAddress, getNetworkDetails } from "@stellar
 import { useWalletStore } from "../lib/walletStore";
 import { useToast } from "./ToastProvider";
 import { ErrorInline } from "./ErrorInline";
+import { useNetworkGuard } from "../hooks/useNetworkGuard";
 
 export const WalletConnect: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -12,6 +13,7 @@ export const WalletConnect: React.FC = () => {
   const { publicKey, setPublicKey, network, setNetwork, disconnect } = useWalletStore();
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
+  const { isMismatch } = useNetworkGuard();
 
   // Keep track of previous public key to avoid infinite toast loops and state updates
   const prevPublicKeyRef = useRef<string | null>(publicKey);
@@ -140,10 +142,14 @@ export const WalletConnect: React.FC = () => {
       <div className="flex flex-col items-end space-y-1">
         <div className="flex items-center space-x-2">
           {network && (
-            <span className={`text-xs px-2 py-1 rounded-md border font-medium ${network.toUpperCase().includes("MAINNET") || network.toUpperCase().includes("PUBLIC")
-              ? "bg-green-900/30 text-green-400 border-green-800"
-              : "bg-yellow-900/30 text-yellow-500 border-yellow-700"
-              }`}>
+            <span className={`text-xs px-2 py-1 rounded-md border font-medium ${
+              isMismatch
+                ? "bg-red-900/40 text-red-300 border-red-700"
+                : network.toUpperCase().includes("MAINNET") || network.toUpperCase().includes("PUBLIC")
+                  ? "bg-green-900/30 text-green-400 border-green-800"
+                  : "bg-yellow-900/30 text-yellow-500 border-yellow-700"
+            }`}>
+              {isMismatch && <span aria-label="Network mismatch" title="Network mismatch">⚠ </span>}
               {network.toUpperCase()}
             </span>
           )}
