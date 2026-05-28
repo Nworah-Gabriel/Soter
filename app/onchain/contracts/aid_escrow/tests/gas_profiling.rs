@@ -4,7 +4,7 @@ use aid_escrow::{AidEscrow, AidEscrowClient, Config};
 use soroban_sdk::{
     testutils::{Address as _, Ledger, LedgerInfo},
     token::StellarAssetClient,
-    Address, Env, Map, Symbol, Vec,
+    Address, Env, Map, Vec,
 };
 
 // ---------------------------------------------------------------------------
@@ -73,12 +73,6 @@ impl TestSetup {
 
     fn now(&self) -> u64 {
         self.env.ledger().timestamp()
-    }
-
-    fn advance_time(&self, seconds: u64) {
-        let mut info = self.env.ledger().get();
-        info.timestamp += seconds;
-        self.env.ledger().set(info);
     }
 }
 
@@ -231,7 +225,7 @@ fn profile_single_claim() {
     t.fund_contract(ONE_TOKEN);
     let expires_at = t.now() + 3_600;
     let metadata = Map::new(&t.env);
-    let package_id = t.client.create_package(
+    let _package_id = t.client.create_package(
         &t.admin,
         &1u64,
         &recipient,
@@ -330,7 +324,7 @@ fn profile_claim_with_proof() {
     );
 
     let expires_at = t.now() + 3_600;
-    let package_id = t.client.create_package(
+    let _package_id = t.client.create_package(
         &t.admin,
         &1u64,
         &Address::generate(&t.env),
@@ -453,7 +447,7 @@ fn profile_get_package() {
     t.fund_contract(ONE_TOKEN);
     let expires_at = t.now() + 3_600;
     let metadata = Map::new(&t.env);
-    let package_id = t.client.create_package(
+    let _package_id = t.client.create_package(
         &t.admin,
         &1u64,
         &recipient,
@@ -467,7 +461,7 @@ fn profile_get_package() {
     let before = capture_budget(&t.env);
 
     // Get package
-    t.client.get_package(&package_id);
+    t.client.get_package(&_package_id);
 
     // Capture final budget
     let after = capture_budget(&t.env);
